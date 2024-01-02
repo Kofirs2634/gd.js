@@ -210,15 +210,15 @@ const getDifficulty = (diff: number, special?: 'auto' | 'demon'): DifficultyLeve
   };
 };
 
-type RawAward = 0 | 1 | 2 | 3;
-type PrettyAward = 'None' | 'Star' | 'Feature' | 'Epic';
+type RawAward = 0 | 1 | 2 | 3 | 4 | 5;
+type PrettyAward = 'None' | 'Star' | 'Feature' | 'Epic' | 'Legendary' | 'Mythic';
 /** @internal */
-const AWARDS: PrettyAward[] = ['None', 'Star', 'Feature', 'Epic'];
+const AWARDS: PrettyAward[] = ['None', 'Star', 'Feature', 'Epic', 'Legendary', 'Mythic'];
 
 /** A level's award */
 type Award = {
   /**
-   * The raw numeric representation of the award. 0 = none, 1 = star, 2 = feature, 3 = epic.
+   * The raw numeric representation of the award. 0 = none, 1 = star, 2 = feature, 3 = epic, 4 = legendary, 5 = mythic.
    * Note this is also the amount of creator points earned from the level
    */
   raw: RawAward;
@@ -239,9 +239,9 @@ const ORBS = [0, 0, 50, 75, 125, 175, 225, 275, 350, 425, 500];
  * @returns The award for the level
  * @internal
  */
-const getAward = (isRated: boolean, feature: number, isEpic: boolean): Award => {
+const getAward = (isRated: boolean, feature: number, epicStatus: number): Award => {
   if (feature > 0) {
-    const raw = isEpic ? 3 : 2;
+    const raw = (2 + epicStatus) as RawAward;
     return {
       raw,
       position: feature,
@@ -255,15 +255,16 @@ const getAward = (isRated: boolean, feature: number, isEpic: boolean): Award => 
   };
 };
 
-type RawLevelLength = 0 | 1 | 2 | 3 | 4;
-type PrettyLevelLength = 'Tiny' | 'Short' | 'Medium' | 'Long' | 'XL';
+type RawLevelLength = 0 | 1 | 2 | 3 | 4 | 5;
+type PrettyLevelLength = 'Tiny' | 'Short' | 'Medium' | 'Long' | 'XL' | 'Plat.';
 /** @internal */
 const LEVEL_LENGTH_MAP: { [k in RawLevelLength]: PrettyLevelLength } = {
   0: 'Tiny',
   1: 'Short',
   2: 'Medium',
   3: 'Long',
-  4: 'XL'
+  4: 'XL',
+  5: 'Plat.'
 };
 
 /** The length of a level */
@@ -315,6 +316,8 @@ class SearchedLevel {
     id: number;
     /** The creator's account ID (if the user is registered) */
     accountID?: number;
+    /** The creator's username (if the user is registered) */
+    username?: string;
   };
   /** The level's difficulty rating */
   difficulty: {
@@ -380,7 +383,10 @@ class SearchedLevel {
     this.creator = {
       id: +d[6]
     };
-    if (user.length) this.creator.accountID = +user[2];
+    if (user.length) {
+      this.creator.accountID = +user[2];
+      this.creator.username = user[1];
+    }
     this.difficulty = {
       stars: +d[18],
       level: getDifficulty(+d[9], !!d[17] ? 'demon' : !!d[25] ? 'auto' : undefined),
@@ -396,7 +402,7 @@ class SearchedLevel {
       count: +d[37] as Coins['count']
     };
     if (this.coins.count > 0) this.coins.areSilver = !!+d[38];
-    this.award = getAward(this.difficulty.stars > 0, +d[19], !!+d[42]);
+    this.award = getAward(this.difficulty.stars > 0, +d[19], +d[42]);
     this.orbs = ORBS[this.difficulty.stars];
     this.diamonds = this.difficulty.stars < 2 ? 0 : this.difficulty.stars + 2;
     const orig = +d[30];

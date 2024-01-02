@@ -39,8 +39,8 @@ export default class GDRequestParams {
   constructor(data: GDRequestData = {}) {
     this.data = {
       gdw: 0,
-      gameVersion: 21,
-      binaryVersion: 35,
+      gameVersion: 22,
+      binaryVersion: 38,
       ...data
     };
   }

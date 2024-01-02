@@ -22,7 +22,8 @@ import {
   commentKey,
   commentSalt,
   likeKey,
-  likeSalt
+  likeSalt,
+  colors
 } from '../util';
 import sha1 from 'sha1';
 
@@ -340,52 +341,6 @@ class Message<O extends boolean> extends SearchedMessage<O> {
   }
 }
 
-/** @internal */
-const colors = [
-  '#7dff00',
-  '#00ff00',
-  '#00ff7d',
-  '#00ffff',
-  '#007dff',
-  '#0000ff',
-  '#7d00ff',
-  '#ff00ff',
-  '#ff007d',
-  '#ff0000',
-  '#ff7d00',
-  '#ffff00',
-  '#ffffff',
-  '#b900ff',
-  '#ffb900',
-  '#000000',
-  '#00c8ff',
-  '#afafaf',
-  '#5a5a5a',
-  '#ff7d7d',
-  '#00af4b',
-  '#007d7d',
-  '#004baf',
-  '#4b00af',
-  '#7d007d',
-  '#af004b',
-  '#af4b00',
-  '#7d7d00',
-  '#4baf00',
-  '#ff4b00',
-  '#963200',
-  '#966400',
-  '#649600',
-  '#009664',
-  '#006496',
-  '#640096',
-  '#960064',
-  '#960000',
-  '#009600',
-  '#000096',
-  '#7dffaf',
-  '#7d7dff'
-];
-
 /**
  * A color used by a Geometry Dash player.
  */
@@ -469,43 +424,67 @@ const generateSocial = (path: string, type: keyof typeof SOCIALMAP): SocialURL =
 /**
  * An icon type
  */
-type IconCosmetic = 'cube' | 'ship' | 'ball' | 'ufo' | 'wave' | 'spider' | 'robot';
+type IconCosmetic = 'cube' | 'ship' | 'ball' | 'ufo' | 'wave' | 'robot' | 'spider' | 'swing';
 /**
  * The colors in a Geometry Dash user's profile
  */
-type Colors = { primary: GDColor; secondary: GDColor };
+type Colors = { primary: GDColor; secondary: GDColor; glow: GDColor };
 /**
  * A Geometry Dash player's cosmetics
  */
 class UserCosmetics {
+  /** The player's raw cube number */
+  cube: number;
+  /** The player's raw ship number */
+  ship: number;
+  /** The player's raw ball number */
+  ball: number;
+  /** The player's raw UFO number */
+  ufo: number;
+  /** The player's raw wave number */
+  wave: number;
+  /** The player's raw robot number */
+  robot: number;
+  /** The player's raw spider number */
+  spider: number;
+  /** The player's raw swing number */
+  swing: number;
+  /** The player's raw jetpack number */
+  jetpack: number;
+  /** Whether the player uses an icon glowing */
+  glow: boolean;
   /** The player's raw explosion number */
   explosion?: number;
+  /** The colors the player uses */
+  colors: Colors;
 
-  /** @internal */
+  /**
+   * Constructs data about a Geometry Dash player's cosmetics
+   * @param _creator The creator associated with this user
+   * @param rawData The raw data returned from the Geometry Dash request for this user
+   * @internal
+   */
   constructor(
     /** @internal */
     private _creator: UserCreator,
-    /** The player's raw cube number */
-    public cube: number,
-    /** The player's raw ship number */
-    public ship: number,
-    /** The player's raw ball number */
-    public ball: number,
-    /** The player's raw UFO number */
-    public ufo: number,
-    /** The player's raw wave number */
-    public wave: number,
-    /** The player's raw robot number */
-    public robot: number,
-    /** The player's raw glow number */
-    public glow: number,
-    /** The player's raw spider number */
-    public spider: number,
-    explosion: number,
-    /** The colors the player uses */
-    public colors: Colors
+    data: ParsedData
   ) {
-    if (!isNaN(explosion)) this.explosion = explosion;
+    this.cube = +data[21];
+    this.ship = +data[22];
+    this.ball = +data[23];
+    this.ufo = +data[24];
+    this.wave = +data[25];
+    this.robot = +data[26];
+    this.spider = +data[43];
+    this.swing = +data[53];
+    this.jetpack = +data[54];
+    this.glow = !!+data[28];
+    if (!isNaN(+data[48])) this.explosion = +data[48];
+    this.colors = {
+      primary: userColor(+data[10]),
+      secondary: userColor(+data[11]),
+      glow: userColor(+data[51])
+    };
   }
 
   /**
@@ -567,6 +546,8 @@ class User {
   stats: {
     /** The number of stars the player has collected */
     stars: number;
+    /** The number of moons the player has collected */
+    moons: number;
     /** The number of diamonds the player has collected */
     diamonds: number;
     /** The number of demons the player has beaten */
@@ -607,6 +588,7 @@ class User {
     this.accountID = +d[16];
     this.stats = {
       stars: +d[3],
+      moons: +d[52],
       diamonds: +d[46],
       demons: +d[4],
       rank: +d[30],
@@ -621,22 +603,7 @@ class User {
     if (d[44]) socials.twitter = generateSocial(d[44], 'twitter');
     if (d[45]) socials.twitch = generateSocial(d[45], 'twitch');
     this.socials = socials;
-    this.cosmetics = new UserCosmetics(
-      _creator,
-      +d[21],
-      +d[22],
-      +d[23],
-      +d[24],
-      +d[25],
-      +d[26],
-      +d[28],
-      +d[43],
-      +d[47],
-      {
-        primary: userColor(+d[10]),
-        secondary: userColor(+d[11])
-      }
-    );
+    this.cosmetics = new UserCosmetics(_creator, d);
     this.permissions = generatePermission(+d[49]);
   }
 
@@ -1650,7 +1617,16 @@ class LoggedInUser extends User {
 }
 
 /** @internal */
-const ICONTYPEMAP: IconCosmetic[] = ['cube', 'ship', 'ball', 'ufo', 'wave', 'robot', 'spider'];
+const ICONTYPEMAP: IconCosmetic[] = [
+  'cube',
+  'ship',
+  'ball',
+  'ufo',
+  'wave',
+  'robot',
+  'spider',
+  'swing'
+];
 
 /**
  * Cosmetics of a user found by a search
@@ -1744,7 +1720,8 @@ class StatlessSearchedUser {
     this.accountID = +d[16];
     this.cosmetics = new SearchedUserCosmetics(_creator, +d[9], ICONTYPEMAP[+d[14]], {
       primary: userColor(+d[10]),
-      secondary: userColor(+d[11])
+      secondary: userColor(+d[11]),
+      glow: userColor(+d[51])
     });
   }
 
@@ -1874,6 +1851,8 @@ class SearchedUser extends StatlessSearchedUser {
   stats: {
     /** The number of stars the player has collected */
     stars: number;
+    /** The number of moons the player has collected */
+    moons: number;
     /** The number of demons the player has beaten */
     demons: number;
     /** The coins the player has collected */
@@ -1897,6 +1876,7 @@ class SearchedUser extends StatlessSearchedUser {
     super(_creator, d);
     this.stats = {
       stars: +d[3],
+      moons: +d[52],
       demons: +d[4],
       coins: {
         normal: +d[13],
